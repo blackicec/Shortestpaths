@@ -1,7 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <map>
-#include <stack>
+#include <queue>
 #include <fstream>
 
 using std::cout;
@@ -10,65 +10,99 @@ using std::endl;
 using std::ifstream;
 using std::map;
 using std::vector;
-using std::stack;
 using std::string;
-using std::priority_queue<int, std::vector<int>, std::greater<int> >;
+using std::priority_queue;
 
-map< string, Node > graph; // the graph containing all the edges
-std::priority_queue<int, std::vector<int>, std::greater<int> > heap;
+typedef struct Edge {
+	char start_node,
+		end_node;
+	int weight;
+} Edge;
+
+typedef struct Node {
+
+} Node;
+
+// FUNCTIONS
+void process(char*);
+// END FUNCTION DECLARATIONS
+
+// GLOBAL VARIABLES
+bool is_directed;			// set if the edges in the graph are directed
+map< char, Node > graph; 	// the graph containing all the edges
+vector< Edge > edges; 		// This will keep a list of edges and there weights
+std::priority_queue< int, std::vector<int>, std::greater<int> > heap;
+priority_queue<int, std::vector<int>, std::greater<int> > queue;
+// END GLOBAL DEFINITIONS
 
 int main( int argc, char** argv) {
 
-	if( argc < 2 ) {
-		cout << "Usage: \"shortest_path.exe [filename.ext]\"\n";
-		return 1;
-	}	
+	string dij_source,	// the source node for running Dijkstra's Algorithm
+		short_source;	// the start node for running Shortest Reliable Path
 
+	dij_source = short_source = "";
+
+	// attempt to open the file from user input
 	ifstream file;
-	file.open( argv[1] );
+	char filename[80];
 
+	cout << "-> Enter a filename that contains the graph.\n-> ";
+	cin >> filename; 
+
+	// check to make sure that the file is good
+	file.open( filename );
 	// if file will not open, then alert user and kill program
 	if( !file.is_open() ) {
-		cout << "An error ocurred while trying to open the file\n";
+		cout << "An error ocurred while trying to read the file\n";
 		return -1;
 	}
-	
-	string i, j;
-	while( file >> i >> j ) { 
+	file.close();
 
-			map< string, Node >::iterator it = graph.find( i );
-			map< string, Node >::iterator it2 = graph.find( j );
+	// begin processing the nodes and weights to form a graph
 
-			// if inital vertex is not in the map then put it in and give it
-			// a node with its one connectivity node, j
-			if( it == graph.end() ) {
-				Node n;
-				n.value = i;
-				n.index = -1;
-				n.added = false;
+	cout << "-> The file has been processed.\n";
+	process( filename );
+}
 
-				graph[i] = n;
+void process(char* filename) {
+	char i, j;	// vertex1, vertex2
+	int w;		// weight of an edge
+	string extra_text;
 
-				graph[i].adj_nodes.push_back(j);
-			}
+	ifstream file;
+	file.open( filename );
 
-			// else, the key is already in the mapping, so add another
-			// connectivity node to its vector
-			else 
-				graph[i].adj_nodes.push_back(j);
-	
-			// check to see if j is a key in the map
-			// if not, then add it
-				if( it2 == graph.end() ) {
-					Node terminal;
-					terminal.value = j;
-					terminal.index = -1;
-					terminal.added = false;
+	// clear the comments from the stream
+	getline(file, extra_text);
 
-					graph[j] = terminal;
-				}
+	// if the file contains a '/n' between each line, clear it
+	if( file.peek() == '\n')	file.ignore();
+
+	// get the graph type from the stream
+	getline(file, extra_text);
+
+	while( file >> i >> j >> w) { 
+
+		map< char, Node >::iterator it = graph.find( i );
+		map< char, Node >::iterator it2 = graph.find( j );
+
+		// add the new edge to the graph
+		Edge e;
+		
+		e.start_node = i;
+		e.end_node = j;
+		e.weight = w;
+
+		edges.push_back( e );
+
+		
 	}
 
 	file.close();
+
+	cout << "My edges:\n";
+
+	for(int i = 0; i < edges.size(); ++i)
+		cout << edges[i].start_node << " -> " << edges[i].end_node << " with weight = " << edges[i].weight << endl;
 }
 
