@@ -1,4 +1,5 @@
 #include <iostream>
+#include <stdlib.h>		// for atoi(char*)
 #include <vector>
 #include <map>
 #include <queue>
@@ -25,34 +26,32 @@ typedef struct Node {
 	char id;
 	vector<char> adj_nodes;
 
-} Node;
-
-typedef struct PathNode {
-	char id;
 	int shortest_path;
 
 	char parent_id;	// previous node in shortest path that leads to this node
 
-	inline bool operator< (const PathNode n) const {
-		return ((shortest_path < n.shortest_path) ? true : false);
+	inline bool operator< (const Node* n) const {
+		return ((shortest_path < n->shortest_path) ? true : false);
 	}
 
-	inline bool operator> (const PathNode n) const {
-		return ((shortest_path > n.shortest_path) ? true : false);
+	inline bool operator> (const Node* n) const {
+		return ((shortest_path > n->shortest_path) ? true : false);
 	}
 	
-	inline bool operator== (const PathNode n) const {
-		return ((shortest_path == n.shortest_path) ? true : false);
+	inline bool operator== (const Node* n) const {
+		return ((shortest_path == n->shortest_path) ? true : false);
 	}
-} PathNode;
+
+} Node;
 
 // FUNCTIONS
 void process(char*);	// records edges, weights and nodes to form a graph
 
 // the PathNode array will include the shortest paths when this function completes
-void Dijkstra(char, vector< PathNode >& );
+void Dijkstra(char, vector< Node >& );
 void printGraph();
-void printShortestPaths( char, vector< PathNode >& );
+void printShortestPaths( char );
+int getDistance(char, char);	// returns the weight distance between 2 nodes
 // END FUNCTION DECLARATIONS
 
 // GLOBAL VARIABLES
@@ -60,26 +59,32 @@ bool is_directed;			// set if the edges in the graph are directed
 int weight_sum;				// the sum of all weights in the original graph
 map< char, Node > graph; 	// the graph containing all the edges
 vector< Edge > edges; 		// This will keep a list of edges and there weights
-vector< PathNode > final_paths;
-priority_queue< PathNode, std::vector<PathNode>, std::greater<PathNode> > heap;
+vector< Node > final_paths;
+priority_queue< Node*, std::vector<Node*>, std::greater<Node*> > minheap;
 // END GLOBAL DEFINITIONS
 
 int main( int argc, char** argv) {
 
+	// check for [graph_file, start_node_dijk, start_node_shrt, k]
+	if( argc < 5) {
+		cout << "Usage: shortest_path.exe [graph_file.txt] [source_node]" 
+			<< " [start_node for k] [k]\n";
+		return 1;
+	}
+
 	char dij_source,	// the source node for running Dijkstra's Algorithm
 		short_source;	// the start node for running Shortest Reliable Path
 
-	dij_source = short_source = ' ';
+	int k = atoi(argv[4]);
+
+	dij_source = argv[2][0];
+	short_source =argv[3][0];
 
 	// attempt to open the file from user input
 	ifstream file;
-	char filename[80];
-
-	cout << "-> Enter a filename that contains the graph.\n-> ";
-	cin >> filename; 
 
 	// check to make sure that the file is good
-	file.open( filename );
+	file.open( argv[1] );
 	// if file will not open, then alert user and kill program
 	if( !file.is_open() ) {
 		cout << "An error ocurred while trying to read the file\n";
@@ -90,15 +95,15 @@ int main( int argc, char** argv) {
 	// begin processing the nodes and weights to form a graph
 
 	cout << "-> The file has been processed.\n";
-	process( filename );
+	process( argv[1] );
 	printGraph();
 
 	// vector will hold every node's shortest path once Dijkstra has been ran
-	vector< PathNode > shortest_paths;
+	vector< Node > shortest_paths;
 	Dijkstra( dij_source, shortest_paths);
 
 	// sent shortest path data to a file called output.txt
-	printShortestPaths( dij_source, shortest_paths);
+	printShortestPaths( dij_source );
 }
 
 void process(char* filename) {
@@ -178,23 +183,76 @@ void process(char* filename) {
 			<< " with weight = " << edges[i].weight << endl;
 }
 
-void Dijkstra(char source, vector<PathNode>& final_paths) {
+void Dijkstra(char source, vector<Node>& final_paths) {
 
 	// Initialize all the node's shortest paths to the sum of the weights
 	// since this is the maximum possible path from any node to another
-	// without forming a cycle
-	map< char, Node >::iterator it = graph.begin();	
+	// without forming a cycle in our graph
+	map< char, Node >::iterator it = graph.begin();
+	map< char, Node >::iterator it2 = graph.begin();
 
 	for( ; it != graph.end(); ++it) {
 		// take every key in the map and initalize the vector holding the final
 		// paths.
-		PathNode node;
-		node.id = (char)it->first;
-		node.parent_id = '~';	// default parent node character
-		node.shortest_path = weight_sum;
+		Node *node;
+		node = &it->second;
+		node->parent_id = ' ';	// default parent node character
 
-		final_paths.push_back( node );
-	} 
+		// if the current node being initialized is the source, then set
+		// the shortest path to itself to 0 
+		it->second.shortest_path = node->shortest_path = 
+			((node->id == source) ? 0 : weight_sum);
+
+		//final_paths.push_back( node );
+
+		minheap.push( node );
+	}
+
+	Node *current;
+	char adj_node;
+	int distance,
+		new_distance;
+
+	while( !minheap.empty() ) {
+		
+		current = minheap.top();
+		minheap.pop();
+
+		// locate node so we can get its adjacency list
+		it = graph.find( current->id );
+
+		for(int i = 0; i < it->second.adj_nodes.size(); ++i) {
+
+			adj_node = it->second.adj_nodes[i];
+			
+			// find the node so we can update it if a shorter path is present
+			it2 = graph.find( adj_node );
+
+			// relax each edge connected to the current node iff it is less
+			// than its current shortest path
+			distance = getDistance(current->id, adj_node );
+			new_distance = current->shortest_path + distance;
+
+			cout << "New: " << new_distance << "\nOriginal: " << it2->second.shortest_path << '\n';
+			if(new_distance < it2->second.shortest_path) {
+				it2->second.shortest_path = new_distance;
+
+				cout << new_distance << '\n';
+				// we've found a new shortest path!
+				it2->second.parent_id = current->id;
+			}
+		}
+	}
+}
+
+int getDistance(char start, char end) {
+
+	for(int i = 0; i < edges.size(); ++i) {
+		if((start == edges[i].start_node) && (end == edges[i].end_node))
+			return edges[i].weight;
+	}
+
+	return 0;	// if something goes wrong, just return 0
 }
 
 void printGraph() {
@@ -213,17 +271,18 @@ void printGraph() {
 		for(int i = 0; i < vecSize; ++i) {
 			cout << it->second.adj_nodes[i] << ' ';
 		}
-
 		cout << endl;
 	}
 }
 
-void printShortestPaths( char source, vector< PathNode >& s_paths) {
+void printShortestPaths( char source ) {
+
+	map< char, Node >::iterator it = graph.begin();
 
 	cout << "Dijkstra\nSource: " << source << endl;
 
-	for(int i = 0; i < s_paths.size(); ++i)
-		cout << "NODE " << s_paths[i].id << ':' << s_paths[i].shortest_path
+	for( ; it != graph.end(); ++it)
+		cout << "NODE " << it->second.id << ':' << it->second.shortest_path
 			<< '\n';
 
 	cout << "End Dijkstra" << endl;
