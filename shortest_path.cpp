@@ -8,6 +8,7 @@ using std::cout;
 using std::cin;
 using std::endl; 
 using std::ifstream;
+using std::ofstream;
 using std::map;
 using std::vector;
 using std::string;
@@ -23,6 +24,7 @@ typedef struct Edge {
 typedef struct Node {
 	char id;
 	vector<char> adj_nodes;
+
 } Node;
 
 typedef struct PathNode {
@@ -30,6 +32,18 @@ typedef struct PathNode {
 	int shortest_path;
 
 	char parent_id;	// previous node in shortest path that leads to this node
+
+	inline bool operator< (const PathNode n) const {
+		return ((shortest_path < n.shortest_path) ? true : false);
+	}
+
+	inline bool operator> (const PathNode n) const {
+		return ((shortest_path > n.shortest_path) ? true : false);
+	}
+	
+	inline bool operator== (const PathNode n) const {
+		return ((shortest_path == n.shortest_path) ? true : false);
+	}
 } PathNode;
 
 // FUNCTIONS
@@ -38,7 +52,7 @@ void process(char*);	// records edges, weights and nodes to form a graph
 // the PathNode array will include the shortest paths when this function completes
 void Dijkstra(char, vector< PathNode >& );
 void printGraph();
-
+void printShortestPaths( char, vector< PathNode >& );
 // END FUNCTION DECLARATIONS
 
 // GLOBAL VARIABLES
@@ -47,16 +61,15 @@ int weight_sum;				// the sum of all weights in the original graph
 map< char, Node > graph; 	// the graph containing all the edges
 vector< Edge > edges; 		// This will keep a list of edges and there weights
 vector< PathNode > final_paths;
-std::priority_queue< int, std::vector<int>, std::greater<int> > heap;
-priority_queue<int, std::vector<int>, std::greater<int> > queue;
+priority_queue< PathNode, std::vector<PathNode>, std::greater<PathNode> > heap;
 // END GLOBAL DEFINITIONS
 
 int main( int argc, char** argv) {
 
-	string dij_source,	// the source node for running Dijkstra's Algorithm
+	char dij_source,	// the source node for running Dijkstra's Algorithm
 		short_source;	// the start node for running Shortest Reliable Path
 
-	dij_source = short_source = "";
+	dij_source = short_source = ' ';
 
 	// attempt to open the file from user input
 	ifstream file;
@@ -79,6 +92,13 @@ int main( int argc, char** argv) {
 	cout << "-> The file has been processed.\n";
 	process( filename );
 	printGraph();
+
+	// vector will hold every node's shortest path once Dijkstra has been ran
+	vector< PathNode > shortest_paths;
+	Dijkstra( dij_source, shortest_paths);
+
+	// sent shortest path data to a file called output.txt
+	printShortestPaths( dij_source, shortest_paths);
 }
 
 void process(char* filename) {
@@ -197,3 +217,15 @@ void printGraph() {
 		cout << endl;
 	}
 }
+
+void printShortestPaths( char source, vector< PathNode >& s_paths) {
+
+	cout << "Dijkstra\nSource: " << source << endl;
+
+	for(int i = 0; i < s_paths.size(); ++i)
+		cout << "NODE " << s_paths[i].id << ':' << s_paths[i].shortest_path
+			<< '\n';
+
+	cout << "End Dijkstra" << endl;
+}
+
