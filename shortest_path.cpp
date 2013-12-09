@@ -55,9 +55,10 @@ int getDistance(char, char);	// returns the weight distance between 2 nodes
 // END FUNCTION DECLARATIONS
 
 // GLOBAL VARIABLES
-bool is_directed;			// set if the edges in the graph are directed
+bool directed_mode;			// set if the edges in the graph are directed
 int weight_sum;				// the sum of all weights in the original graph
-map< char, Node > graph; 	// the graph containing all the edges
+map< char, Node > graph; 	// the graph containing all the edges for d-graph
+map< char, Node > ugraph;	// holds the edges for a u-graph
 vector< Edge > edges; 		// This will keep a list of edges and there weights
 priority_queue< Node*, std::vector<Node*>, std::greater<Node*> > minheap;
 // END GLOBAL DEFINITIONS
@@ -95,7 +96,7 @@ int main( int argc, char** argv) {
 	process( argv[1] );
 
 	// will print originally recorded adjacency list
-	//printGraph();
+	printGraph();
 
 	// perform Dijkstra's algorithm on the graph
 	Dijkstra( dij_source );
@@ -128,6 +129,10 @@ void process(char* filename) {
 
 	// get the graph type from the stream
 	getline(file, extra_text);
+
+	// set the flag to determine what type to graph we are working with
+	directed_mode = ( extra_text.compare( "D" ) == 0 ?
+					true : false);
 
 	while( file >> i >> j >> w) { 
 
@@ -173,6 +178,17 @@ void process(char* filename) {
 			graph[j] = terminal;
 		}
 
+		/* lastly, if this is an undirected graph then each edge is a 2-way
+		 * street. We need to modify our map accordingly. Add i to the 
+		 * adjancency list of j
+		*/
+		if( !directed_mode ) {
+	
+			it2 = graph.find( j );	// make sure we are pointing to the right node
+
+			it2->second.adj_nodes.push_back( i );	// add the adj node
+		}
+
 		// if the file contains a '/n' between each line, clear it
 		if( file.peek() == '\n')	file.ignore();
 	}
@@ -198,8 +214,6 @@ void Dijkstra(char source) {
 		// the shortest path to itself to 0 
 		it->second.shortest_path = node->shortest_path = 
 			((node->id == source) ? 0 : weight_sum);
-
-		//final_paths.push_back( node );
 
 		minheap.push( node );
 	}
@@ -242,8 +256,22 @@ void Dijkstra(char source) {
 int getDistance(char start, char end) {
 
 	for(int i = 0; i < edges.size(); ++i) {
-		if((start == edges[i].start_node) && (end == edges[i].end_node))
+
+		/* The first two comparisons are for the directed graphs. It says that
+		* if we find an edge from start to end, then return that weight. Now the
+		* first group combined with the second are for undirected graphs. It
+		* says that the edge, (start --> end) is the same as the edge (end --> start).
+		* if we find either one in the vector of edges, then return it (since the
+		* value for both will be the same).
+		*/
+		if( ((start == edges[i].start_node) && 
+			(end == edges[i].end_node))
+			||
+			((end == edges[i].start_node) && 
+			(start == edges[i].end_node)) ) {
+
 			return edges[i].weight;
+		}
 	}
 
 	return 0;	// if something goes wrong, just return 0
