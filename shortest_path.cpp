@@ -25,6 +25,7 @@ typedef struct Edge {
 typedef struct Node {
 	char id;
 	vector<char> adj_nodes;
+	bool visited;
 
 	int shortest_path;
 
@@ -58,9 +59,8 @@ int getDistance(char, char);	// returns the weight distance between 2 nodes
 bool directed_mode;			// set if the edges in the graph are directed
 int weight_sum;				// the sum of all weights in the original graph
 map< char, Node > graph; 	// the graph containing all the edges for d-graph
-map< char, Node > ugraph;	// holds the edges for a u-graph
 vector< Edge > edges; 		// This will keep a list of edges and there weights
-priority_queue< Node*, std::vector<Node*>, std::greater<Node*> > minheap;
+priority_queue< Node*/*, std::vector<Node*>, std::greater<Node*>*/ > minheap;
 // END GLOBAL DEFINITIONS
 
 int main( int argc, char** argv) {
@@ -209,16 +209,20 @@ void Dijkstra(char source) {
 		Node *node;
 		node = &it->second;
 		node->parent_id = ' ';	// default parent node character
-
+		node->visited = false;
+		
 		// if the current node being initialized is the source, then set
 		// the shortest path to itself to 0 
-		it->second.shortest_path = node->shortest_path = 
+		node->shortest_path = 
 			((node->id == source) ? 0 : weight_sum);
 
-		minheap.push( node );
+		if( node->id == source)
+			minheap.push( node );
 	}
 
-	Node *current;
+	Node *current,
+		*neighbor;
+		
 	char adj_node;
 	int distance,
 		new_distance;
@@ -226,30 +230,45 @@ void Dijkstra(char source) {
 	while( !minheap.empty() ) {
 		
 		current = minheap.top();
+		current->visited = true;
 		minheap.pop();
+		
+		cout << "Node: " << current->id << " was popped.\n";
 
 		// locate node so we can get its adjacency list
 		it = graph.find( current->id );
 
+		cout << "Current : " << current->id << endl;
 		for(int i = 0; i < it->second.adj_nodes.size(); ++i) {
 
 			adj_node = it->second.adj_nodes[i];
 			
+			cout << "Checking : " << adj_node << endl;
+			
 			// find the node so we can update it if a shorter path is present
 			it2 = graph.find( adj_node );
+			neighbor = &it2->second;
 
 			// relax each edge connected to the current node iff it is less
 			// than its current shortest path
-			distance = getDistance(current->id, adj_node );
+			distance = getDistance(current->id, neighbor->id );
 			new_distance = current->shortest_path + distance;
 
-			if(new_distance < it2->second.shortest_path) {
-				it2->second.shortest_path = new_distance;
+			cout << "Current " << neighbor->shortest_path << " : " << "New " << new_distance << endl;
+			if(new_distance < neighbor->shortest_path) {
+				
+				neighbor->shortest_path = new_distance;
 
+				minheap.push( neighbor );
+				cout << "Updating " << it2->first << "'s path to " << new_distance << endl;
+				cout << neighbor->id << " was pushed.\n";
 				// we've found a new shortest path!
-				it2->second.parent_id = current->id;
+				neighbor->parent_id = current->id;
+				
+				
 			}
 		}
+		cout << endl;
 	}
 }
 
@@ -264,16 +283,22 @@ int getDistance(char start, char end) {
 		* if we find either one in the vector of edges, then return it (since the
 		* value for both will be the same).
 		*/
-		if( ((start == edges[i].start_node) && 
-			(end == edges[i].end_node))
-			||
-			((end == edges[i].start_node) && 
-			(start == edges[i].end_node)) ) {
+		if( !directed_mode ) {
+			if( ((start == edges[i].start_node) && 
+				(end == edges[i].end_node))
+				||
+				((end == edges[i].start_node) && 
+				(start == edges[i].end_node)) ) {
 
-			return edges[i].weight;
+				return edges[i].weight;
+			}
+		}
+		else {
+			if( ((start == edges[i].start_node) && 
+				(end == edges[i].end_node)) )
+				return edges[i].weight;
 		}
 	}
-
 	return 0;	// if something goes wrong, just return 0
 }
 
