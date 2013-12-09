@@ -48,7 +48,7 @@ typedef struct Node {
 void process(char*);	// records edges, weights and nodes to form a graph
 
 // the PathNode array will include the shortest paths when this function completes
-void Dijkstra(char, vector< Node >& );
+void Dijkstra( char );
 void printGraph();
 void printShortestPaths( char );
 int getDistance(char, char);	// returns the weight distance between 2 nodes
@@ -59,7 +59,6 @@ bool is_directed;			// set if the edges in the graph are directed
 int weight_sum;				// the sum of all weights in the original graph
 map< char, Node > graph; 	// the graph containing all the edges
 vector< Edge > edges; 		// This will keep a list of edges and there weights
-vector< Node > final_paths;
 priority_queue< Node*, std::vector<Node*>, std::greater<Node*> > minheap;
 // END GLOBAL DEFINITIONS
 
@@ -93,17 +92,20 @@ int main( int argc, char** argv) {
 	file.close();
 
 	// begin processing the nodes and weights to form a graph
-
-	cout << "-> The file has been processed.\n";
 	process( argv[1] );
-	printGraph();
 
-	// vector will hold every node's shortest path once Dijkstra has been ran
-	vector< Node > shortest_paths;
-	Dijkstra( dij_source, shortest_paths);
+	// will print originally recorded adjacency list
+	//printGraph();
+
+	// perform Dijkstra's algorithm on the graph
+	Dijkstra( dij_source );
 
 	// sent shortest path data to a file called output.txt
 	printShortestPaths( dij_source );
+
+	cout << "Execution Complete." << endl;
+	
+	return 0;
 }
 
 void process(char* filename) {
@@ -175,15 +177,9 @@ void process(char* filename) {
 		if( file.peek() == '\n')	file.ignore();
 	}
 	file.close();
-
-	cout << "My edges:\n";
-
-	for(int i = 0; i < edges.size(); ++i)
-		cout << edges[i].start_node << " -> " << edges[i].end_node 
-			<< " with weight = " << edges[i].weight << endl;
 }
 
-void Dijkstra(char source, vector<Node>& final_paths) {
+void Dijkstra(char source) {
 
 	// Initialize all the node's shortest paths to the sum of the weights
 	// since this is the maximum possible path from any node to another
@@ -233,11 +229,9 @@ void Dijkstra(char source, vector<Node>& final_paths) {
 			distance = getDistance(current->id, adj_node );
 			new_distance = current->shortest_path + distance;
 
-			cout << "New: " << new_distance << "\nOriginal: " << it2->second.shortest_path << '\n';
 			if(new_distance < it2->second.shortest_path) {
 				it2->second.shortest_path = new_distance;
 
-				cout << new_distance << '\n';
 				// we've found a new shortest path!
 				it2->second.parent_id = current->id;
 			}
@@ -282,7 +276,7 @@ void printShortestPaths( char source ) {
 	cout << "Dijkstra\nSource: " << source << endl;
 
 	for( ; it != graph.end(); ++it)
-		cout << "NODE " << it->second.id << ':' << it->second.shortest_path
+		cout << "NODE " << it->second.id << " : " << it->second.shortest_path
 			<< '\n';
 
 	cout << "End Dijkstra" << endl;
