@@ -233,17 +233,12 @@ void Dijkstra(char source) {
 		current->visited = true;
 		minheap.pop();
 		
-		cout << "Node: " << current->id << " was popped.\n";
-
 		// locate node so we can get its adjacency list
 		it = graph.find( current->id );
 
-		cout << "Current : " << current->id << endl;
 		for(int i = 0; i < it->second.adj_nodes.size(); ++i) {
 
 			adj_node = it->second.adj_nodes[i];
-			
-			cout << "Checking : " << adj_node << endl;
 			
 			// find the node so we can update it if a shorter path is present
 			it2 = graph.find( adj_node );
@@ -254,14 +249,12 @@ void Dijkstra(char source) {
 			distance = getDistance(current->id, neighbor->id );
 			new_distance = current->shortest_path + distance;
 
-			cout << "Current " << neighbor->shortest_path << " : " << "New " << new_distance << endl;
 			if(new_distance < neighbor->shortest_path) {
 				
 				neighbor->shortest_path = new_distance;
 
 				minheap.push( neighbor );
-				cout << "Updating " << it2->first << "'s path to " << new_distance << endl;
-				cout << neighbor->id << " was pushed.\n";
+				
 				// we've found a new shortest path!
 				neighbor->parent_id = current->id;
 				
