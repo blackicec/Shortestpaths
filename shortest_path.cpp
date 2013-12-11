@@ -13,6 +13,7 @@ using std::ofstream;
 using std::map;
 using std::vector;
 using std::string;
+using std::queue;
 using std::priority_queue;
 
 typedef struct Edge {
@@ -29,6 +30,12 @@ typedef struct Node {
 
 	int shortest_path;
 
+	int shortest_edge;
+
+	int current_k;
+
+	map<int, int> travelDistance;
+
 	char parent_id;	// previous node in shortest path that leads to this node
 
 	inline bool operator< (const Node* n) const {
@@ -43,24 +50,43 @@ typedef struct Node {
 		return ((shortest_path == n->shortest_path) ? true : false);
 	}
 
+	// for each reachable path, connecting to this node,
+	// set the node of the incoming path as one of the
+	// parents
+	vector<char> parents;
+
 } Node;
 
+// This node implementation will be used to find the Shortest Reliable Path
+typedef struct TerminalNode {
+
+	// for every node that can be reached after k edge branches, have that node
+	// paint to this, saying that it can be reached within 0 to k traversals
+	vector<char> parents;
+
+} TerminalNode;
+
 // FUNCTIONS
+
 void process(char*);	// records edges, weights and nodes to form a graph
 
 // the PathNode array will include the shortest paths when this function completes
 void Dijkstra( char );
 void printGraph();
-void printShortestPaths( char );
+void printShortestPaths( const char, const char );
+void printReliable( const char );
 int getDistance(char, char);	// returns the weight distance between 2 nodes
+int getMin( map<int, int> & );
 // END FUNCTION DECLARATIONS
 
 // GLOBAL VARIABLES
 bool directed_mode;			// set if the edges in the graph are directed
 int weight_sum;				// the sum of all weights in the original graph
+int k;
 map< char, Node > graph; 	// the graph containing all the edges for d-graph
 vector< Edge > edges; 		// This will keep a list of edges and there weights
-priority_queue< Node*/*, std::vector<Node*>, std::greater<Node*>*/ > minheap;
+priority_queue< Node* > minheap;
+
 // END GLOBAL DEFINITIONS
 
 int main( int argc, char** argv) {
@@ -75,7 +101,7 @@ int main( int argc, char** argv) {
 	char dij_source,	// the source node for running Dijkstra's Algorithm
 		short_source;	// the start node for running Shortest Reliable Path
 
-	int k = atoi(argv[4]);
+	k = atoi(argv[4]);
 
 	dij_source = argv[2][0];
 	short_source =argv[3][0];
@@ -96,15 +122,16 @@ int main( int argc, char** argv) {
 	process( argv[1] );
 
 	// will print originally recorded adjacency list
-	printGraph();
+	//printGraph();
 
 	// perform Dijkstra's algorithm on the graph
 	Dijkstra( dij_source );
 
 	// sent shortest path data to a file called output.txt
-	printShortestPaths( dij_source );
+	printShortestPaths( dij_source, short_source );
 
 	cout << "Execution Complete." << endl;
+	cout << "The contents have been redirected to \"output.txt\"" << endl;
 	
 	return 0;
 }
@@ -210,11 +237,14 @@ void Dijkstra(char source) {
 		node = &it->second;
 		node->parent_id = ' ';	// default parent node character
 		node->visited = false;
+		node->current_k = 0;
+		node->shortest_edge = 
+			((node->id == source) ? 0 : edges.size() + 1);
 		
 		// if the current node being initialized is the source, then set
 		// the shortest path to itself to 0 
 		node->shortest_path = 
-			((node->id == source) ? 0 : weight_sum);
+			((node->id == source) ? 0 : weight_sum + 1);
 
 		if( node->id == source)
 			minheap.push( node );
@@ -249,6 +279,12 @@ void Dijkstra(char source) {
 			distance = getDistance(current->id, neighbor->id );
 			new_distance = current->shortest_path + distance;
 
+			if( ((current->shortest_edge + 1) < neighbor->shortest_edge)) {
+
+				neighbor->travelDistance[current->shortest_edge + 1] =
+					new_distance; 
+			}
+
 			if(new_distance < neighbor->shortest_path) {
 				
 				neighbor->shortest_path = new_distance;
@@ -257,11 +293,11 @@ void Dijkstra(char source) {
 				
 				// we've found a new shortest path!
 				neighbor->parent_id = current->id;
-				
-				
+
+				neighbor->travelDistance[current->shortest_edge + 1] =
+					new_distance; 		
 			}
 		}
-		cout << endl;
 	}
 }
 
@@ -315,16 +351,75 @@ void printGraph() {
 	}
 }
 
-void printShortestPaths( char source ) {
+int getMin( map<int, int> &m ) {
+
+	// shortest edge, weight
+	map<int, int>::iterator it = m.begin();
+
+	if( it == m.end() )
+		return weight_sum + 1;
+
+	int validMin = it->second;
+
+	for( ; it != m.end(); ++it) {
+		if( it->first <= k ) {
+			if(it->second < validMin)
+				validMin = it->second;
+		} 
+	}
+	return validMin;
+}
+
+// if the minimum value is return as the sum our weights + 1, then this tells
+// us that that certain node cannot be reached from our selected source
+
+void printShortestPaths( const char source, const char source2 ) {
+
+	ofstream file;
+
+	file.open( "output.txt" );
 
 	map< char, Node >::iterator it = graph.begin();
 
-	cout << "Dijkstra\nSource: " << source << endl;
+	file << "Dijkstra\nSource: " << source << endl;
 
-	for( ; it != graph.end(); ++it)
-		cout << "NODE " << it->second.id << " : " << it->second.shortest_path
-			<< '\n';
+	for( ; it != graph.end(); ++it) {
+		file << "NODE " << it->second.id << " : "; 
+		
+		if( it->second.shortest_path == (weight_sum + 1) ) 
+			file << "Unreachable";
+		else
+			file << it->second.shortest_path;
+	
+		file << '\n';
+	}
 
-	cout << "End Dijkstra" << endl;
+	file << "End Dijkstra" << endl << endl;
+
+	/***************************/
+	// Print shortest reliable path
+
+	Dijkstra( source2 );
+
+	int min;
+
+	file << "Shortest Reliable Paths Algorithm\n";
+	file << "Integer " << k << " Source " << source2 << endl;
+
+	it = graph.begin();
+	for( ; it != graph.end(); ++it) {
+
+	min = (it->second.id == source2 ? 0 :
+			getMin( it->second.travelDistance ));
+
+		file << "NODE " << it->second.id << " : ";
+		
+		if( min == (weight_sum + 1) ) 
+			file << "Unreachable";
+		else
+			file << min;
+
+		file << '\n';
+	}
 }
 
