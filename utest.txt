@@ -1,6 +1,6 @@
 #Input graph File name is input.txt - Single line comment
 
-UD
+D
 
 A B 4
 A C 2
