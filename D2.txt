@@ -1,0 +1,5 @@
+#comment
+D
+A A 2
+B C 2
+C D 1
